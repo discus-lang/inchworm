@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, RankNTypes, TypeFamilies, FlexibleContexts #-}
 module Text.Lexer.Inchworm.Source
         ( Source   (..), Elem (..)
         , Sequence (..)
@@ -35,18 +35,23 @@ data Source m is
         { -- | Skip over values from the source that match the given predicate.
           sourceSkip    :: (Elem is -> Bool) -> m ()
 
+          -- | Try to evaluate the given computation that may pull values
+          --   from the source. If it returns Nothing then rewind the 
+          --   source to the original position.
+        , sourceTry     :: forall a. m (Maybe a) -> m (Maybe a)
+
           -- | Pull a value from the source,
           --   provided it matches the given predicate.
         , sourcePull    :: (Elem is -> Bool) -> m (Maybe (Elem is))
 
-          -- | Pull a sequence of values from the source that match the given predicate,
-          --   also passing the index of the current element to the predicate.
-        , sourcePulls   :: Maybe Int -> (Int -> Elem is -> Bool) -> m (Maybe is)
-
-          -- | Try to evaluate the given computation that may pull values
-          --   from the source. If it returns Nothing then rewind the 
-          --   source to the original position.
-        , sourceTry     :: forall a. m (Maybe a) -> m (Maybe a) }
+          -- | Use a fold function to select a some consecutive tokens from the source
+          --   that we want to process, also passing the current index to the fold function.
+        , sourcePulls   :: forall s
+                        .  Maybe Int 
+                        -> (Int -> Elem is -> s -> Maybe s)
+                        -> s
+                        -> m (Maybe is)
+        }
 
 
 ---------------------------------------------------------------------------------------------------
@@ -60,9 +65,9 @@ makeListSourceIO cs0
  -> return 
  $  Source 
         (skipListSourceIO  ref)
+        (tryListSourceIO   ref)
         (pullListSourceIO  ref)
         (pullsListSourceIO ref)
-        (tryListSourceIO   ref)
  where
         -- Skip values from the source.
         skipListSourceIO ref pred
@@ -83,6 +88,21 @@ makeListSourceIO cs0
 
                 eat cc0
 
+
+        -- Try to run the given computation,
+        -- reverting source state changes if it returns Nothing.
+        tryListSourceIO ref comp 
+         = do   cc      <- readIORef ref
+                mx      <- comp
+                case mx of
+                 Just i  
+                  -> return (Just i)
+
+                 Nothing 
+                  -> do writeIORef ref cc
+                        return Nothing
+
+
         -- Pull a single value from the source.
         pullListSourceIO ref pred
          = do  cc      <- readIORef ref
@@ -101,10 +121,10 @@ makeListSourceIO cs0
 
         -- Pull a vector of values that match the given predicate
         -- from the source.
-        pullsListSourceIO ref mLenMax pred
+        pullsListSourceIO ref mLenMax work s0
          = do   cc0     <- readIORef ref
 
-                let eat !ix !cc !acc
+                let eat !ix !cc !acc !s
                      | Just mx  <- mLenMax
                      , ix >= mx
                      = return (ix, cc, reverse acc)
@@ -115,32 +135,16 @@ makeListSourceIO cs0
                          -> return (ix, cc, reverse acc)
 
                         c : cs
-                         |  pred ix c
-                         -> do  eat (ix + 1) cs (c : acc)
-
-                         |  otherwise
-                         -> return (ix, cc, reverse acc)
+                         -> case work ix c s of
+                                Nothing -> return (ix, cc, reverse acc)
+                                Just s' -> eat (ix + 1) cs (c : acc) s'
 
                 (len, cc', acc) 
-                 <- eat 0 cc0 []
+                 <- eat 0 cc0 [] s0
 
                 case len of
                  0      -> return Nothing
                  _      -> do
                         writeIORef ref cc'
                         return  $ Just acc
-
-
-        -- Try to run the given computation,
-        -- reverting source state changes if it returns Nothing.
-        tryListSourceIO ref comp 
-         = do   cc      <- readIORef ref
-                mx      <- comp
-                case mx of
-                 Just i  
-                  -> return (Just i)
-
-                 Nothing 
-                  -> do writeIORef ref cc
-                        return Nothing
 

@@ -7,10 +7,11 @@ module Text.Lexer.Inchworm
         , scanSourceToList
 
         , satisfies
-        , accept,  accepts
-        , from,    froms
-        , alt,     alts
-        , munch,   skip)
+        , accept,       accepts
+        , from,         froms
+        , alt,          alts
+        , skip
+        , munchPred,    munchFold)
 where
 import Text.Lexer.Inchworm.Source
 import Text.Lexer.Inchworm.Scanner

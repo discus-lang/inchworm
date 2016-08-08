@@ -2,10 +2,10 @@
 
 module Text.Lexer.Inchworm.Combinator
         ( satisfies
-        , accept,  accepts
-        , from,    froms
-        , alt,     alts
-        , munch
+        , accept,       accepts
+        , from,         froms
+        , alt,          alts
+        , munchPred,    munchFold
         , skip)
 where
 import Text.Lexer.Inchworm.Source
@@ -70,7 +70,7 @@ froms   :: Monad m
 froms mLen accept
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mx      <- sourcePulls ss mLen (\i c -> True)
+ $  do  mx      <- sourcePulls ss mLen (\i c _ -> Just ()) ()
         case mx of
          Nothing -> return Nothing
          Just xs -> return $ accept xs
@@ -104,25 +104,6 @@ alts (Scanner scan1 : xs)
 
 
 -------------------------------------------------------------------------------
-munch   :: Monad m
-        => Maybe Int
-        -> (Int -> Elem is -> Bool)
-        -> (is  -> Maybe a)
-        -> Scanner m is a
-
-munch mLenMax pred accept
- =  Scanner $ \ss
- -> sourceTry ss
- $  do  mr              <- sourcePulls ss mLenMax pred 
-        case mr of
-         Nothing        -> return Nothing
-         Just xs
-          -> case accept xs of
-                Nothing -> return Nothing
-                Just x  -> return $ Just x
-
-
--------------------------------------------------------------------------------
 -- | A scanner that skips tokens that match the given predicate,
 --   before applying the given scanner.
 skip    :: Monad m
@@ -131,3 +112,38 @@ skip pred (Scanner scan1)
  =  Scanner $ \ss
  -> do  sourceSkip ss pred
         scan1 ss
+
+
+-------------------------------------------------------------------------------
+munchPred 
+        :: Monad m
+        => Maybe Int
+        -> (Int -> Elem is -> Bool) 
+        -> (is  -> Maybe a)
+        -> Scanner m is a
+
+munchPred mLenMax pred accept
+ = munchFold 
+        mLenMax 
+        (\ix i s -> if pred ix i then Just s else Nothing)
+        ()
+        accept
+
+
+munchFold   
+        :: Monad m
+        => Maybe Int
+        -> (Int -> Elem is -> s -> Maybe s) -> s
+        -> (is  -> Maybe a)
+        -> Scanner m is a
+
+munchFold mLenMax work s0 accept
+ =  Scanner $ \ss
+ -> sourceTry ss
+ $  do  mr              <- sourcePulls ss mLenMax work s0
+        case mr of
+         Nothing        -> return Nothing
+         Just xs
+          -> case accept xs of
+                Nothing -> return Nothing
+                Just x  -> return $ Just x

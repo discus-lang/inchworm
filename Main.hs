@@ -1,9 +1,23 @@
 
 import Text.Lexer.Inchworm
+import Text.Lexer.Inchworm.Scanner.Char
 import qualified Data.Char      as Char
 
+
+main
+ = do   ss      <- makeListSourceIO 
+                $ unlines
+                [ "(box (run {:de:} {- derpotronic phat -} -1234 + 37))"
+                , "-- derp"
+                , "let fish = 35 in fish + fish"]
+        result  <- scanSourceToList ss scanner
+        print result
+
+
 data Token
-        = KPunc         String
+        = KNewLine
+        | KComment      String
+        | KPunc         String
         | KKeyWord      String
         | KVar          String
         | KCon          String
@@ -16,15 +30,19 @@ data Lit
         deriving Show
 
 
-main
- = do   ss      <- makeListSourceIO "(box (run {:de:} -1234 + 37))"
-        result  <- scanSourceToList ss scanner
-        print result
-
 scanner
- = skip Char.isSpace
- $ alts [ -- Punctuation.
-          scanPunc
+ = skip (\c -> c == ' ' || c == '\t')
+ $ alts [ -- Block comments
+          fmap KComment $ scanHaskellCommentBlock
+
+          -- Line comments
+        , fmap KComment $ scanHaskellCommentLine
+
+          -- New line characters
+        , scanNewLine
+
+          -- Punctuation.
+        , scanPunc
 
           -- Keywords and variables.
           -- These are handled in one scanner because keyword names like
@@ -36,13 +54,18 @@ scanner
 
           -- Literal integers.
           -- Needs to come before scanOp    so we don't take '-' independently.
-        , scanLitInteger
+        , fmap (KLit . LInteger) scanInteger
 
           -- Operator names.
           -- Needs to come after LitInteger so we don't take '-' independently.
         , scanOp
         ]
 
+
+-- Newlines -------------------------------------------------------------------
+scanNewLine :: Scanner IO [Char] Token
+scanNewLine 
+ = accept '\n' KNewLine
 
 
 -- Punctuation ----------------------------------------------------------------
@@ -58,20 +81,17 @@ puncs2
 -- | Scan a punctuation character.
 scanPunc  :: Scanner IO [Char] Token
 scanPunc   
- = alt  (munch (Just 2) matchPunc2  acceptPunc2)
-        (from           acceptPunc1)
+ = alt  (munchPred (Just 2) matchPunc2  acceptPunc2)
+        (from               acceptPunc1)
  where  
-        acceptPunc1 :: Char -> Maybe Token
         acceptPunc1 c
          | elem c puncs1        = Just $ KPunc [c]
          | otherwise            = Nothing
 
-        matchPunc2 :: Int -> Char -> Bool
         matchPunc2 0 c  = elem c ['[', '{', ':']
         matchPunc2 1 c  = elem c [']', '}', ':']
         matchPunc2 _ _  = False
 
-        acceptPunc2 :: [Char] -> Maybe Token
         acceptPunc2 cs
                 | elem cs puncs2        = Just $ KPunc cs
                 | otherwise             = Nothing
@@ -90,7 +110,7 @@ keywords
 -- | Scan a keyword or variable.
 scanKeyVar   :: Scanner IO [Char] Token
 scanKeyVar
- = munch Nothing matchKeyVar acceptKeyVar
+ = munchPred Nothing matchKeyVar acceptKeyVar
  where
         matchKeyVar  :: Int -> Char -> Bool
         matchKeyVar 0 c    = isVarStart c
@@ -117,7 +137,7 @@ isVarBody c
 -- Constructors ---------------------------------------------------------------
 scanCon :: Scanner IO [Char] Token
 scanCon
- = munch Nothing matchCon acceptCon
+ = munchPred Nothing matchCon acceptCon
  where  
         matchCon 0 c    = isConStart c
         matchCon _ c    = isConBody  c
@@ -142,7 +162,7 @@ isConBody c
 -- Operators ------------------------------------------------------------------
 scanOp :: Scanner IO [Char] Token
 scanOp 
- = munch Nothing matchOp acceptOp
+ = munchPred Nothing matchOp acceptOp
  where
         matchOp 0 c     = isOpStart c
         matchOp _ c     = isOpBody  c
@@ -168,23 +188,4 @@ isOpBody c
         || c == '*'     || c == '-'     || c == '+'     || c == '='
         || c == ':'     || c == '?'     || c == '/'     || c == '|'
         || c == '<'     || c == '>'
-
-
--- Literal Naturals -----------------------------------------------------------
-scanLitInteger :: Scanner IO [Char] Token
-scanLitInteger 
- = munch Nothing matchInt acceptInt
- where
-        matchInt  0 c  
-         = c == '-' || c == '+' || Char.isDigit c
-
-        matchInt  _ c   = Char.isDigit c
-
-        acceptInt ('+' : cs)
-         | null cs              = Nothing
-
-        acceptInt ('-' : cs)
-         | null cs              = Nothing
-
-        acceptInt cs            = Just $ KLit (LInteger (read cs))
 
