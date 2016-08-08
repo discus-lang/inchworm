@@ -3,25 +3,46 @@ import Text.Lexer.Inchworm
 import qualified Data.Char      as Char
 
 data Token
-        = KKeyWord      String
+        = KPunc         String
+        | KKeyWord      String
         | KVar          String
         | KCon          String
-        | KPunc         String
+        | KOp           String
+        | KLit          Lit
         deriving Show
 
+data Lit
+        = LInteger      Integer
+        deriving Show
+
+
 main
- = do   ss      <- makeListSourceIO "(box (run {:de:}))"
-
-        let scanner
-                = skip Char.isSpace
-                $ alts  [ scanPunc
-                        , scanKeyVar
-                        , scanCon
-                        ]
-
+ = do   ss      <- makeListSourceIO "(box (run {:de:} -1234 + 37))"
         result  <- scanSourceToList ss scanner
-
         print result
+
+scanner
+ = skip Char.isSpace
+ $ alts [ -- Punctuation.
+          scanPunc
+
+          -- Keywords and variables.
+          -- These are handled in one scanner because keyword names like
+          -- 'box' have the same lexical structure as variable names.
+        , scanKeyVar
+
+          -- Constructor names.
+        , scanCon
+
+          -- Literal integers.
+          -- Needs to come before scanOp    so we don't take '-' independently.
+        , scanLitInteger
+
+          -- Operator names.
+          -- Needs to come after LitInteger so we don't take '-' independently.
+        , scanOp
+        ]
+
 
 
 -- Punctuation ----------------------------------------------------------------
@@ -83,13 +104,14 @@ scanKeyVar
 
 isVarStart :: Char -> Bool
 isVarStart c
- = Char.isLower c
+ =  Char.isLower c
+ || c == '?'
 
 isVarBody  :: Char -> Bool
 isVarBody c
  =  Char.isAlpha c
  || Char.isDigit c
- || c == '_' || c == '\''
+ || c == '_' || c == '\'' || c == '$' || c == '#'
 
 
 -- Constructors ---------------------------------------------------------------
@@ -97,13 +119,9 @@ scanCon :: Scanner IO [Char] Token
 scanCon
  = munch Nothing matchCon acceptCon
  where  
-        -- | Match a constructor name.
-        matchCon  :: Int -> Char -> Bool
         matchCon 0 c    = isConStart c
         matchCon _ c    = isConBody  c
 
-        -- | Accept a constructor name.
-        acceptCon :: [Char] -> Maybe Token
         acceptCon cs    = Just $ KCon cs
 
 
@@ -118,6 +136,55 @@ isConBody  :: Char -> Bool
 isConBody c
  =  Char.isAlpha c
  || Char.isDigit c 
- || c == '_' || c == '\''
+ || c == '_' || c == '\'' || c == '#'
 
+
+-- Operators ------------------------------------------------------------------
+scanOp :: Scanner IO [Char] Token
+scanOp 
+ = munch Nothing matchOp acceptOp
+ where
+        matchOp 0 c     = isOpStart c
+        matchOp _ c     = isOpBody  c
+
+        acceptOp cs             = Just $ KOp cs
+
+
+-- | Character can start an operator.
+isOpStart :: Char -> Bool
+isOpStart c
+        =  c == '~'     || c == '!'                     || c == '#'     
+        || c == '$'     || c == '%'                     || c == '&'     
+        || c == '*'     || c == '-'     || c == '+'     || c == '='
+        || c == ':'                     || c == '/'     || c == '|'
+        || c == '<'     || c == '>'
+
+
+-- | Character can be part of an operator body.
+isOpBody :: Char -> Bool
+isOpBody c
+        =  c == '~'     || c == '!'                     || c == '#'     
+        || c == '$'     || c == '%'     || c == '^'     || c == '&'     
+        || c == '*'     || c == '-'     || c == '+'     || c == '='
+        || c == ':'     || c == '?'     || c == '/'     || c == '|'
+        || c == '<'     || c == '>'
+
+
+-- Literal Naturals -----------------------------------------------------------
+scanLitInteger :: Scanner IO [Char] Token
+scanLitInteger 
+ = munch Nothing matchInt acceptInt
+ where
+        matchInt  0 c  
+         = c == '-' || c == '+' || Char.isDigit c
+
+        matchInt  _ c   = Char.isDigit c
+
+        acceptInt ('+' : cs)
+         | null cs              = Nothing
+
+        acceptInt ('-' : cs)
+         | null cs              = Nothing
+
+        acceptInt cs            = Just $ KLit (LInteger (read cs))
 
