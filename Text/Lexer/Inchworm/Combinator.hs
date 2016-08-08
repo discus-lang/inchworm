@@ -1,21 +1,24 @@
+{-# LANGUAGE FlexibleContexts #-}
 
 module Text.Lexer.Inchworm.Combinator
         ( satisfies
-        , accept,  from
-        , accepts, froms
-        , alt, alts
+        , accept,  accepts
+        , from,    froms
+        , alt,     alts
         , munch
         , skip)
 where
 import Text.Lexer.Inchworm.Source
 import Text.Lexer.Inchworm.Scanner
-import qualified Data.Vector.Unboxed as U
+import qualified Data.List              as List
+import Prelude hiding (length)
+
 
 -------------------------------------------------------------------------------
 -- | Pull an input token if it matches the given predicate.
 satisfies
         :: Monad m 
-        => (i -> Bool) -> Scanner m i i
+        => (Elem is -> Bool) -> Scanner m is (Elem is)
 
 satisfies pred 
  =  Scanner $ \ss 
@@ -23,23 +26,23 @@ satisfies pred
 
 
 -------------------------------------------------------------------------------
--- | Accept a fixed length sequence of tokens,
+-- | Pull the next token if it is equal to the given one,
 --   returning the given result value.
-accepts  :: (Monad m, Eq i, U.Unbox i)
-         => [i] -> a -> Scanner m i a
-accepts is a
- = froms (length is)
-         (\is' -> if is == is'
+accept  :: (Monad m, Eq (Elem is))
+        => Elem is -> a -> Scanner m is a
+accept i a
+ = from (\i'   -> if i == i'
                         then Just a
                         else Nothing)
 
 
--- | Pull the next token if it is equal to the given one,
+-- | Accept a fixed length sequence of tokens,
 --   returning the given result value.
-accept  :: (Monad m, Eq i)
-        => i -> a -> Scanner m i a
-accept i a
- = from (\i'   -> if i == i'
+accepts  :: (Monad m, Sequence is, Eq is)
+         => is -> a -> Scanner m is a
+accepts is a
+ = froms (Just (length is))
+         (\is' -> if is == is'
                         then Just a
                         else Nothing)
 
@@ -48,7 +51,7 @@ accept i a
 -- | Use the given function to check whether to accept the next token,
 --   returning the result it produces.
 from    :: Monad m
-        => (i -> Maybe a) -> Scanner m i a
+        => (Elem is -> Maybe a) -> Scanner m is a
 
 from accept 
  =  Scanner $ \ss
@@ -61,23 +64,23 @@ from accept
 
 -- | Use the given function to check whether to accept 
 --   a fixed length sequence of tokens.
-froms   :: (Monad m, U.Unbox i)
-        => Int -> ([i] -> Maybe a) -> Scanner m i a
+froms   :: Monad m
+        => Maybe Int -> (is -> Maybe a) -> Scanner m is a
 
-froms len accept
+froms mLen accept
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mx      <- sourcePulls ss len (\i c -> True)
+ $  do  mx      <- sourcePulls ss mLen (\i c -> True)
         case mx of
          Nothing -> return Nothing
-         Just xs -> return $ accept (U.toList xs)
+         Just xs -> return $ accept xs
 
 
 -------------------------------------------------------------------------------
 -- | Combine two scanners into a new one that 
 --   tries the first before the second.
 alt     :: Monad m 
-        => Scanner m i a -> Scanner m i a -> Scanner m i a
+        => Scanner m is a -> Scanner m is a -> Scanner m is a
 alt (Scanner scan1) (Scanner scan2)
  =  Scanner $ \ss
  -> do  mx              <- sourceTry ss (scan1 ss)
@@ -88,7 +91,7 @@ alt (Scanner scan1) (Scanner scan2)
 
 -- | Combine a list of scanners into  new one.
 alts    :: Monad m
-        => [Scanner m i a] -> Scanner m i a
+        => [Scanner m is a] -> Scanner m is a
 alts [] 
  = Scanner $ \ss -> return Nothing
 
@@ -101,20 +104,20 @@ alts (Scanner scan1 : xs)
 
 
 -------------------------------------------------------------------------------
-munch   :: (U.Unbox i, Monad m)
-        => Int
-        -> (Int -> i -> Bool)
-        -> ([i] -> Maybe a)
-        -> Scanner m i a
+munch   :: Monad m
+        => Maybe Int
+        -> (Int -> Elem is -> Bool)
+        -> (is  -> Maybe a)
+        -> Scanner m is a
 
-munch n pred accept
+munch mLenMax pred accept
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mr              <- sourcePulls ss n pred 
+ $  do  mr              <- sourcePulls ss mLenMax pred 
         case mr of
          Nothing        -> return Nothing
-         Just vec       
-          -> case accept (U.toList vec) of
+         Just xs
+          -> case accept xs of
                 Nothing -> return Nothing
                 Just x  -> return $ Just x
 
@@ -123,9 +126,8 @@ munch n pred accept
 -- | A scanner that skips tokens that match the given predicate,
 --   before applying the given scanner.
 skip    :: Monad m
-        => (i -> Bool) -> Scanner m i a -> Scanner m i a
+        => (Elem i -> Bool) -> Scanner m i a -> Scanner m i a
 skip pred (Scanner scan1)
  =  Scanner $ \ss
  -> do  sourceSkip ss pred
         scan1 ss
-

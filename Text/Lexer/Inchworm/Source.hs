@@ -1,27 +1,47 @@
-{-# LANGUAGE RankNTypes, TypeFamilies, BangPatterns #-}
+{-# LANGUAGE BangPatterns, RankNTypes, TypeFamilies #-}
 module Text.Lexer.Inchworm.Source
-        ( Source (..)
+        ( Source   (..), Elem (..)
+        , Sequence (..)
         , makeListSourceIO)
 where
 import Data.IORef
-import qualified Data.Vector.Unboxed            as U
-import qualified Data.Vector.Unboxed.Mutable    as UM
+import qualified Data.List              as List
+import Prelude  hiding (length)
+
+
+---------------------------------------------------------------------------------------------------
+class Sequence is where
+ type Elem is
+ length :: is -> Int
+ index  :: is -> Int -> Maybe (Elem is)
+
+
+instance Sequence [a] where
+ type Elem [a]  = a
+ length         = List.length
+
+ index ss0 ix0
+  = go ss0 ix0
+  where
+        go []       _   = Nothing
+        go (x : xs) 0   = Just x
+        go (x : xs) n   = go xs (n - 1)
+
 
 
 -- | Source of data values of type 'i'.
-data Source m i
+data Source m is
         = Source
         { -- | Skip over values from the source that match the given predicate.
-          sourceSkip    :: (i -> Bool) -> m ()
+          sourceSkip    :: (Elem is -> Bool) -> m ()
 
           -- | Pull a value from the source,
           --   provided it matches the given predicate.
-        , sourcePull    :: (i -> Bool) -> m (Maybe i)
+        , sourcePull    :: (Elem is -> Bool) -> m (Maybe (Elem is))
 
           -- | Pull a sequence of values from the source that match the given predicate,
-          --   with the given maximum sequence length.
-        , sourcePulls   :: U.Unbox i
-                        => Int -> (Int -> i -> Bool) -> m (Maybe (U.Vector i))
+          --   also passing the index of the current element to the predicate.
+        , sourcePulls   :: Maybe Int -> (Int -> Elem is -> Bool) -> m (Maybe is)
 
           -- | Try to evaluate the given computation that may pull values
           --   from the source. If it returns Nothing then rewind the 
@@ -29,10 +49,12 @@ data Source m i
         , sourceTry     :: forall a. m (Maybe a) -> m (Maybe a) }
 
 
-
+---------------------------------------------------------------------------------------------------
 -- | Make a source from a list of values,
 --   maintaining the state in the IO monad.
-makeListSourceIO :: Eq i => [i] -> IO (Source IO i)
+makeListSourceIO 
+        :: Eq i => [i] -> IO (Source IO [i])
+
 makeListSourceIO cs0
  =  newIORef cs0 >>= \ref
  -> return 
@@ -52,7 +74,7 @@ makeListSourceIO cs0
                          -> return ()
 
                         c : cs  
-                         | pred c
+                         |  pred c
                          -> eat cs
 
                          | otherwise 
@@ -79,36 +101,34 @@ makeListSourceIO cs0
 
         -- Pull a vector of values that match the given predicate
         -- from the source.
-        pullsListSourceIO ref lenMax pred
+        pullsListSourceIO ref mLenMax pred
          = do   cc0     <- readIORef ref
 
-                mvec    <- UM.new lenMax
-
-                let eat !ix !cc
-                     | ix >= lenMax
-                     = return (ix, cc)
+                let eat !ix !cc !acc
+                     | Just mx  <- mLenMax
+                     , ix >= mx
+                     = return (ix, cc, reverse acc)
 
                      | otherwise
                      = case cc of
                         []      
-                         -> return (ix, cc)
+                         -> return (ix, cc, reverse acc)
 
                         c : cs
                          |  pred ix c
-                         -> do  UM.write mvec ix c
-                                eat (ix + 1) cs
+                         -> do  eat (ix + 1) cs (c : acc)
 
                          |  otherwise
-                         -> return (ix, cc)
+                         -> return (ix, cc, reverse acc)
 
-                (len, cc') <- eat 0 cc0
+                (len, cc', acc) 
+                 <- eat 0 cc0 []
+
                 case len of
                  0      -> return Nothing
                  _      -> do
-                        let mvec'  =  UM.slice 0 len mvec
                         writeIORef ref cc'
-                        vec     <- U.unsafeFreeze mvec'
-                        return  $ Just vec
+                        return  $ Just acc
 
 
         -- Try to run the given computation,

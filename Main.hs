@@ -26,16 +26,19 @@ main
 
 -- Punctuation ----------------------------------------------------------------
 puncs1 
- =      [ '(', ')', '.', ';' ]
+ =      [ '(', ')'
+        , '[', ']'
+        , '{', '}'
+        , '.', ',', ';' ]
 
 puncs2 
  =      [ "[:", ":]", "{:", ":}" ]
 
 -- | Scan a punctuation character.
-scanPunc  :: Scanner IO Char Token
+scanPunc  :: Scanner IO [Char] Token
 scanPunc   
- = alt  (from    acceptPunc1)
-        (munch 2 matchPunc2  acceptPunc2)
+ = alt  (munch (Just 2) matchPunc2  acceptPunc2)
+        (from           acceptPunc1)
  where  
         acceptPunc1 :: Char -> Maybe Token
         acceptPunc1 c
@@ -64,9 +67,9 @@ keywords
 
 
 -- | Scan a keyword or variable.
-scanKeyVar   :: Scanner IO Char Token
+scanKeyVar   :: Scanner IO [Char] Token
 scanKeyVar
- = munch 10 matchKeyVar acceptKeyVar
+ = munch Nothing matchKeyVar acceptKeyVar
  where
         matchKeyVar  :: Int -> Char -> Bool
         matchKeyVar 0 c    = isVarStart c
@@ -90,9 +93,9 @@ isVarBody c
 
 
 -- Constructors ---------------------------------------------------------------
-scanCon :: Scanner IO Char Token
+scanCon :: Scanner IO [Char] Token
 scanCon
- = munch 10 matchCon acceptCon
+ = munch Nothing matchCon acceptCon
  where  
         -- | Match a constructor name.
         matchCon  :: Int -> Char -> Bool
