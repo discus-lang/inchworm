@@ -9,11 +9,16 @@ main
                 $ unlines
                 [ "(box (run {:de:} {- derpotronic phat -} -1234 + 37))"
                 , "-- derp"
-                , "let fish = 35 in fish + fish"]
+                , "let fish = 35 in fish + fish"
+                , "'d', 'e'"
+                , "'\\n', '\\a', '\\''"
+                , "'\\137'"
+                , "'\\BEL'"]
         result  <- scanSourceToList ss scanner
         print result
 
 
+-------------------------------------------------------------------------------
 data Token
         = KNewLine
         | KComment      String
@@ -27,6 +32,7 @@ data Token
 
 data Lit
         = LInteger      Integer
+        | LChar         Char
         deriving Show
 
 
@@ -55,6 +61,9 @@ scanner
           -- Literal integers.
           -- Needs to come before scanOp    so we don't take '-' independently.
         , fmap (KLit . LInteger) scanInteger
+
+          -- Literal characters.
+        , fmap (KLit . LChar)    scanHaskellishChar
 
           -- Operator names.
           -- Needs to come after LitInteger so we don't take '-' independently.
