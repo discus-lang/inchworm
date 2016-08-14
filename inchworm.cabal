@@ -7,6 +7,7 @@ Maintainer:     Ben Lippmeier <benl@ouroborus.net>
 Build-Type:     Simple
 Cabal-Version:  >=1.6
 Stability:      experimental
+Homepage:       https://github.com/DDCSF/inchworm
 Category:       Parsing
 Synopsis:       Inchworm Lexer Framework
 
