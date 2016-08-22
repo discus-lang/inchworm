@@ -181,14 +181,15 @@ scanHaskellCommentLine
 scanHaskellCommentLine 
  = munchPred Nothing matchC acceptC
  where
-        matchC 0 '-'     = True
-        matchC 1 '-'     = True
-        matchC _ '\n'    = False
+        matchC 0 '-'                    = True
+        matchC 1 '-'                    = True
+        matchC _ '\n'                   = False
         matchC ix _       
-         | ix < 2       = False
-         | otherwise    = True
+         | ix < 2                       = False
+         | otherwise                    = True
 
-        acceptC cs      = Just cs
+        acceptC ('-' : '-' : cs)        = Just cs
+        acceptC _                       = Nothing
 
 {-# SPECIALIZE INLINE
      scanHaskellCommentLine
