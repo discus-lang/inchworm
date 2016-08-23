@@ -87,16 +87,22 @@ scanHaskellString
         => Scanner m loc [Char] (loc, String)
 
 scanHaskellString 
- = munchFold Nothing matchC (' ', True) acceptC
+ = munchFold Nothing matchC (False, False) acceptC
  where
-        matchC 0 '\"' _                 = Just ('\"', True)
-        matchC _  _  (_, False)         = Nothing
+        -- Expect double quotes as first char.
+        matchC 0 '\"' _                 = Just (False, False)
 
-        matchC ix c  (cPrev, True)
+        -- Matcher is done.
+        matchC _  _  (True, _bEscape)   = Nothing
+
+        -- Match a character.
+        matchC ix c  (False, bEscape)
          | ix < 1                       = Nothing
-         | c == '"' && cPrev == '\\'    = Just ('"', True)
-         | c == '"'                     = Just (c,   False)
-         | otherwise                    = Just (c,   True)
+         | c == '"',  bEscape           = Just (False, False)
+         | c == '"'                     = Just (True,  False)
+         | c == '\\', bEscape           = Just (False, False)
+         | c == '\\'                    = Just (False, True)
+         | otherwise                    = Just (False, False)
 
         acceptC ('"' : cs)              
          = case decodeString cs of
@@ -121,23 +127,25 @@ scanHaskellChar
         => Scanner m loc [Char] (loc, Char)
 
 scanHaskellChar 
- = munchFold Nothing matchC (' ', True) acceptC
+ = munchFold Nothing matchC (False, False) acceptC
  where
-        matchC 0 '\'' _                 = Just ('\'', True)
-        matchC _  _  (_,     False)     = Nothing
+        matchC 0 '\'' _                 = Just (False, False)
+        matchC _  _  (True,  _bEscape)  = Nothing
 
-        matchC ix c  (cPrev, True)
+        matchC ix c  (False,  bEscape)
          | ix < 1                       = Nothing
-         | c == '\'' && cPrev == '\\'   = Just ('\'', True)
-         | c == '\''                    = Just (c,    False)
-         | otherwise                    = Just (c,    True)
+         | c == '\'', bEscape           = Just (False, False)
+         | c == '\''                    = Just (True,  False)
+         | c == '\\', bEscape           = Just (False, False)
+         | c == '\\'                    = Just (False, True)
+         | otherwise                    = Just (False, False)
 
         acceptC ('\'' : cs)          
          = case readChar cs of
                 Just (c, "\'")          -> Just c
                 _                       -> Nothing
 
-        acceptC _                       = Nothing
+        acceptC _                       =  Nothing
 
 {-# SPECIALIZE INLINE
      scanHaskellChar
