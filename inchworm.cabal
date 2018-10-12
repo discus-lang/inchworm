@@ -1,5 +1,5 @@
 name:           inchworm
-version:        1.0.2.3
+version:        1.0.2.4
 license:        MIT
 license-file:   LICENSE
 author:         The Inchworm Development Team
@@ -7,7 +7,7 @@ maintainer:     Ben Lippmeier <benl@ouroborus.net>
 build-Type:     Simple
 cabal-Version:  >=1.6
 stability:      experimental
-homepage:       https://github.com/DDCSF/inchworm
+homepage:       https://github.com/discus-lang/inchworm
 category:       Parsing
 synopsis:       Inchworm Lexer Framework
 
