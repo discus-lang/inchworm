@@ -1,5 +1,5 @@
 name:           inchworm
-version:        1.0.2.2
+version:        1.0.2.3
 license:        MIT
 license-file:   LICENSE
 author:         The Inchworm Development Team
@@ -27,12 +27,12 @@ description:    Parser combinator framework specialized to lexical analysis.
 
 source-repository head
  type:     git
- location: https://github.com/DDCSF/inchworm.git
+ location: https://github.com/discus-lang/inchworm.git
 
 
 library
   build-Depends:
-        base            >= 4.8   && < 4.12
+        base            >= 4.8   && < 4.13
 
   exposed-modules:
         Text.Lexer.Inchworm.Char
