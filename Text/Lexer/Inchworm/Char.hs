@@ -79,8 +79,7 @@ scanInteger
 -- Strings --------------------------------------------------------------------
 -- | Scan a literal string,    enclosed in double quotes.
 -- 
---   We handle the escape codes listed in Section 2.6 of the Haskell Report, 
---   but not string gaps or the @&@ terminator.
+--   We handle the escape codes listed in Section 2.6 of the Haskell Report.
 --
 scanHaskellString 
         :: Monad   m
@@ -142,7 +141,8 @@ scanHaskellChar
 
         acceptC ('\'' : cs)          
          = case readChar cs of
-                Just (c, "\'")          -> Just c
+                -- Character literals do not support gaps or escape terminators
+                Just (Just c, "\'")     -> Just c
                 _                       -> Nothing
 
         acceptC _                       =  Nothing
@@ -219,38 +219,57 @@ decodeString ss0
 
         go !acc ss@(c : cs)
          = case readChar ss of
-                Just (c', cs')  -> go (c' : acc) cs'
-                Nothing         -> go (c  : acc) cs
+                Just (Just c', cs')  -> go (c' : acc) cs'
+                Just (Nothing, cs')  -> go       acc  cs'
+                Nothing              -> go (c  : acc) cs
 
+-- | Result of reading a character: either a real char, or an empty string that is a
+-- successful read, but contains no characters.
+-- These empty strings are sometimes required to remove ambiguity: for example,
+-- '\SO' and '\SOH' are both valid escapes.
+-- To distinguish between the strings ['\SO', 'H'] and ['\SOH'], it is necessary
+-- to explicitly terminate the escape for the former: '\SO\&H' means ['\SO', 'H'].
+type CharGap = Maybe Char
 
 -- | Read a character literal, handling escape codes.
-readChar :: String -> Maybe (Char, String)
+readChar :: String -> Maybe (CharGap, String)
 
 -- Control characters defined by hex escape codes.
 readChar ('\\' : 'x' : cs)
- | [(x, rest)]  <- Numeric.readHex cs   = Just (Char.chr x, rest)
+ | [(x, rest)]  <- Numeric.readHex cs   = Just (Just $ Char.chr x, rest)
  | otherwise                            = Nothing
 
 -- Control characters defined by octal escape codes.
 readChar ('\\' : 'o' : cs)
- | [(x, rest)]  <- Numeric.readOct cs   = Just (Char.chr x, rest)
+ | [(x, rest)]  <- Numeric.readOct cs   = Just (Just $ Char.chr x, rest)
  | otherwise                            = Nothing
 
 -- Control characters defined by carret characters, like \^G
 readChar ('\\' : '^' : c : rest)
- | c >= 'A' && c <= 'Z'                 = Just (Char.chr (Char.ord c - 1), rest)
- | c == '@'                             = Just (Char.chr 0,  rest)
- | c == '['                             = Just (Char.chr 27, rest)
- | c == '\\'                            = Just (Char.chr 28, rest)
- | c == ']'                             = Just (Char.chr 29, rest)
- | c == '^'                             = Just (Char.chr 30, rest)
- | c == '_'                             = Just (Char.chr 31, rest)
+ | c >= 'A' && c <= 'Z'                 = Just (Just $ Char.chr (Char.ord c - 1), rest)
+ | c == '@'                             = Just (Just $ Char.chr 0,  rest)
+ | c == '['                             = Just (Just $ Char.chr 27, rest)
+ | c == '\\'                            = Just (Just $ Char.chr 28, rest)
+ | c == ']'                             = Just (Just $ Char.chr 29, rest)
+ | c == '^'                             = Just (Just $ Char.chr 30, rest)
+ | c == '_'                             = Just (Just $ Char.chr 31, rest)
 
 -- Control characters defined by decimal escape codes.
 readChar ('\\' : cs)
  | (csDigits, csRest)   <- List.span Char.isDigit cs
  , not $ null csDigits
- = Just (Char.chr (read csDigits), csRest)
+ = Just (Just $ Char.chr (read csDigits), csRest)
+
+-- Escape terminator '\&': see CharGap above
+readChar ('\\' : '&' : rest)
+ = Just (Nothing, rest)
+
+-- String gap: two backslashes enclosing whitespace.
+-- As above, this is equivalent to an empty string.
+readChar ('\\' : cs)
+ -- At least one character of whitespace
+ | (_:_, '\\' : rest) <- List.span Char.isSpace cs
+ = Just (Nothing, rest)
 
 -- Control characters defined by ASCII escape codes.
 readChar ('\\' : cs)                    
@@ -258,12 +277,12 @@ readChar ('\\' : cs)
         go ((str, c) : moar)
          = case List.stripPrefix str cs of
                 Nothing                 -> go moar
-                Just rest               -> Just (c, rest)
+                Just rest               -> Just (Just c, rest)
 
    in   go escapedChars
 
 -- Just a regular character.
-readChar (c : rest)                     = Just (c, rest)
+readChar (c : rest)                     = Just (Just c, rest)
 
 -- Nothing to read.
 readChar _                              = Nothing
