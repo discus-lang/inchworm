@@ -11,6 +11,19 @@
 --   are in the "Text.Lexer.Inchworm.Char" module.
 --
 --   No dependencies other than the Haskell 'base' library.
+-- 
+-- __ Release Notes __
+--
+-- @
+--  For 1.1.1.1:
+--   * Matching combinators now produce the first and final locations
+--     that matched.
+--   * Line and column offsets are now 0-based instead of 1-based,
+--     for easier inteface with client editors that expect this (eg VSCode).
+--   Thanks to Amos Robinson:
+--   * Haskell string parser now correctly handles strings gaps and the
+--     string escape character \\&
+-- @
 --
 -- __ Minimal example __
 --

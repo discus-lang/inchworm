@@ -4,7 +4,7 @@ import Text.Lexer.Inchworm.Char
 
 
 data Located a
-        = Located FilePath Location a
+        = Located FilePath (Range Location) a
         deriving Show
 
 data Token

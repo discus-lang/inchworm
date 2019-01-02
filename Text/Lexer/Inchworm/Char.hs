@@ -7,7 +7,7 @@ module Text.Lexer.Inchworm.Char
         , scanStringIO
 
           -- * Locations
-        , Location (..)
+        , Range (..), Location (..)
         , bumpLocationWithChar
 
           -- * Scanners
@@ -33,7 +33,7 @@ scanStringIO
 
 scanStringIO str scanner
  = scanListIO
-        (Location 1 1)
+        (Location 0 0)
         bumpLocationWithChar 
         str scanner
 
@@ -45,7 +45,7 @@ scanStringIO str scanner
 bumpLocationWithChar :: Char -> Location -> Location
 bumpLocationWithChar c (Location line col)
  = case c of 
-        '\n'    -> Location (line + 1) 1
+        '\n'    -> Location (line + 1) 0
         _       -> Location line (col + 1) 
 
 
@@ -53,7 +53,7 @@ bumpLocationWithChar c (Location line col)
 -- | Scan a decimal integer, with optional @-@ and @+@ sign specifiers.
 scanInteger 
         :: Monad m 
-        => Scanner m loc [Char] (loc, Integer)
+        => Scanner m loc [Char] (Range loc, Integer)
 
 scanInteger 
  = munchPred Nothing matchInt acceptInt
@@ -61,19 +61,19 @@ scanInteger
         matchInt  0 !c  
          = c == '-' || c == '+' || Char.isDigit c
 
-        matchInt  _ !c          = Char.isDigit c
+        matchInt  _ !c  = Char.isDigit c
 
         acceptInt ('+' : cs)
-         | null cs              = Nothing
+         | null cs      = Nothing
 
         acceptInt ('-' : cs)
-         | null cs              = Nothing
+         | null cs      = Nothing
 
-        acceptInt cs            = Just $ read cs
+        acceptInt cs    = Just $ read cs
 
 {-# SPECIALIZE INLINE
      scanInteger
-        :: Scanner IO Location [Char] (Location, Integer)
+        :: Scanner IO Location [Char] (Range Location, Integer)
   #-}
 
 -- Strings --------------------------------------------------------------------
@@ -83,7 +83,7 @@ scanInteger
 --
 scanHaskellString 
         :: Monad   m
-        => Scanner m loc [Char] (loc, String)
+        => Scanner m loc [Char] (Range loc, String)
 
 scanHaskellString 
  = munchFold Nothing matchC (False, False) acceptC
@@ -112,7 +112,7 @@ scanHaskellString
 
 {-# SPECIALIZE INLINE
      scanHaskellString
-        :: Scanner IO Location [Char] (Location, String)  
+        :: Scanner IO Location [Char] (Range Location, String)  
   #-}
 
 
@@ -123,7 +123,7 @@ scanHaskellString
 --
 scanHaskellChar 
         :: Monad   m
-        => Scanner m loc [Char] (loc, Char)
+        => Scanner m loc [Char] (Range loc, Char)
 
 scanHaskellChar 
  = munchFold Nothing matchC (False, False) acceptC
@@ -141,7 +141,8 @@ scanHaskellChar
 
         acceptC ('\'' : cs)          
          = case readChar cs of
-                -- Character literals do not support gaps or escape terminators
+                -- Character literals do not support gaps or
+                -- escape terminators
                 Just (Just c, "\'")     -> Just c
                 _                       -> Nothing
 
@@ -149,7 +150,7 @@ scanHaskellChar
 
 {-# SPECIALIZE INLINE
      scanHaskellChar
-        :: Scanner IO Location [Char] (Location, Char)
+        :: Scanner IO Location [Char] (Range Location, Char)
   #-}
 
 
@@ -157,7 +158,7 @@ scanHaskellChar
 -- | Scan a Haskell block comment.
 scanHaskellCommentBlock 
         :: Monad   m
-        => Scanner m loc [Char] (loc, String)
+        => Scanner m loc [Char] (Range loc, String)
 
 scanHaskellCommentBlock
  = munchFold Nothing matchC (' ', True) acceptC
@@ -177,14 +178,14 @@ scanHaskellCommentBlock
 
 {-# SPECIALIZE INLINE
      scanHaskellCommentBlock 
-        :: Scanner IO Location [Char] (Location, String)
+        :: Scanner IO Location [Char] (Range Location, String)
   #-}
 
 
 -- | Scan a Haskell line comment.
 scanHaskellCommentLine 
         :: Monad   m
-        => Scanner m loc [Char] (loc, String)
+        => Scanner m loc [Char] (Range loc, String)
 
 scanHaskellCommentLine 
  = munchPred Nothing matchC acceptC
@@ -201,7 +202,7 @@ scanHaskellCommentLine
 
 {-# SPECIALIZE INLINE
      scanHaskellCommentLine
-        :: Scanner IO Location [Char] (Location, String)
+        :: Scanner IO Location [Char] (Range Location, String)
   #-}
 
 
@@ -223,12 +224,13 @@ decodeString ss0
                 Just (Nothing, cs')  -> go       acc  cs'
                 Nothing              -> go (c  : acc) cs
 
--- | Result of reading a character: either a real char, or an empty string that is a
--- successful read, but contains no characters.
--- These empty strings are sometimes required to remove ambiguity: for example,
--- '\SO' and '\SOH' are both valid escapes.
--- To distinguish between the strings ['\SO', 'H'] and ['\SOH'], it is necessary
--- to explicitly terminate the escape for the former: '\SO\&H' means ['\SO', 'H'].
+-- | Result of reading a character: either a real char, or an empty string
+--   that is a successful read, but contains no characters.
+--   These empty strings are sometimes required to remove ambiguity:
+--   for example,'\SO' and '\SOH' are both valid escapes.
+--   To distinguish between the strings ['\SO', 'H'] and ['\SOH'],
+--   it is necessary to explicitly terminate the escape for the former:
+--   '\SO\&H' means ['\SO', 'H'].
 type CharGap = Maybe Char
 
 -- | Read a character literal, handling escape codes.
@@ -246,13 +248,13 @@ readChar ('\\' : 'o' : cs)
 
 -- Control characters defined by carret characters, like \^G
 readChar ('\\' : '^' : c : rest)
- | c >= 'A' && c <= 'Z'                 = Just (Just $ Char.chr (Char.ord c - 1), rest)
- | c == '@'                             = Just (Just $ Char.chr 0,  rest)
- | c == '['                             = Just (Just $ Char.chr 27, rest)
- | c == '\\'                            = Just (Just $ Char.chr 28, rest)
- | c == ']'                             = Just (Just $ Char.chr 29, rest)
- | c == '^'                             = Just (Just $ Char.chr 30, rest)
- | c == '_'                             = Just (Just $ Char.chr 31, rest)
+ | c >= 'A' && c <= 'Z' = Just (Just $ Char.chr (Char.ord c - 1), rest)
+ | c == '@'             = Just (Just $ Char.chr 0,  rest)
+ | c == '['             = Just (Just $ Char.chr 27, rest)
+ | c == '\\'            = Just (Just $ Char.chr 28, rest)
+ | c == ']'             = Just (Just $ Char.chr 29, rest)
+ | c == '^'             = Just (Just $ Char.chr 30, rest)
+ | c == '_'             = Just (Just $ Char.chr 31, rest)
 
 -- Control characters defined by decimal escape codes.
 readChar ('\\' : cs)
@@ -276,16 +278,16 @@ readChar ('\\' : cs)
  = let  go [] = Nothing
         go ((str, c) : moar)
          = case List.stripPrefix str cs of
-                Nothing                 -> go moar
-                Just rest               -> Just (Just c, rest)
+                Nothing   -> go moar
+                Just rest -> Just (Just c, rest)
 
    in   go escapedChars
 
 -- Just a regular character.
-readChar (c : rest)                     = Just (Just c, rest)
+readChar (c : rest)     = Just (Just c, rest)
 
 -- Nothing to read.
-readChar _                              = Nothing
+readChar _              = Nothing
 
 escapedChars :: [(String, Char)]
 escapedChars 

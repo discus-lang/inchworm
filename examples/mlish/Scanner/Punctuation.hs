@@ -17,7 +17,7 @@ puncs2
 
 
 -- | Scan a punctuation character.
-scanPunctuation  :: Scanner IO Location [Char] (Location, Token)
+scanPunctuation  :: Scanner IO Location [Char] (Range Location, Token)
 scanPunctuation   
  = alt  (munchPred (Just 2) matchPunc2  acceptPunc2)
         (from               acceptPunc1)

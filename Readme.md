@@ -2,8 +2,8 @@
 
 Inchworm is a simple parser combinator framework specialized to
 lexical analysis.
-Tokens can be specified via simple fold functions, 
-and we include baked in source location handling.
+Tokens are specified via simple fold functions, and we include
+baked in source location handling.
 
 If you want to parse expressions instead of performing lexical
 analysis then try the `parsec` or `attoparsec` packages, which
@@ -32,18 +32,18 @@ error.
 
 ```
 import Text.Lexer.Inchworm.Char
-import qualified Data.Char      as Char
- 
+import qualified Data.Char as Char
+
 -- | A source token.
 data Token 
         = KBra | KKet | KVar String | KCon String | KInt Integer
         deriving Show
- 
+
 -- | A thing with attached location information.
 data Located a
-        = Located FilePath Location a
+        = Located FilePath (Range Location) a
         deriving Show
- 
+
 -- | Scanner for a lispy language.
 scanner :: FilePath
         -> Scanner IO Location [Char] (Located Token)
@@ -58,11 +58,12 @@ scanner fileName
         , fmap (stamp KCon) 
           $ munchWord (\ix c -> if ix == 0 then Char.isUpper c
                                            else Char.isAlpha c)
-         ]
+        ]
  where  -- Stamp a token with source location information.
-        stamp k (l, t) 
-          = Located fileName l (k t)
- 
+        stamp k (range, t) 
+          = Located fileName range (k t)
+
+main :: IO ()
 main 
  = do   let fileName = "Source.lispy"
         let source   = "(some (Lispy like) 26 Program 93 (for you))"

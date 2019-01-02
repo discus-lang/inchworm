@@ -9,7 +9,7 @@ import qualified Data.Char      as Char
 
 -- Named  ---------------------------------------------------------------------
 -- | Scan a named thing.
-scanNamed  :: Scanner IO Location [Char] (Location, Token)
+scanNamed  :: Scanner IO Location [Char] (Range Location, Token)
 scanNamed = alt scanKeyVar scanCon
 
 
@@ -24,7 +24,7 @@ keywords
 
 
 -- | Scan a keyword or variable.
-scanKeyVar :: Scanner IO Location [Char] (Location, Token)
+scanKeyVar :: Scanner IO Location [Char] (Range Location, Token)
 scanKeyVar
  = munchPred Nothing matchKeyVar acceptKeyVar
  where
@@ -34,8 +34,8 @@ scanKeyVar
 
         acceptKeyVar :: [Char] -> Maybe Token
         acceptKeyVar cs
-                | elem cs keywords      = Just $ KKeyWord cs
-                | otherwise             = Just $ KVar     cs
+                | elem cs keywords = Just $ KKeyWord cs
+                | otherwise        = Just $ KVar     cs
 
 
 isVarStart :: Char -> Bool
@@ -51,7 +51,7 @@ isVarBody c
 
 
 -- Constructors ---------------------------------------------------------------
-scanCon   :: Scanner IO Location [Char] (Location, Token)
+scanCon   :: Scanner IO Location [Char] (Range Location, Token)
 scanCon
  = munchPred Nothing matchCon acceptCon
  where  

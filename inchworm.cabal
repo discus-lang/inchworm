@@ -1,5 +1,5 @@
 name:           inchworm
-version:        1.0.2.4
+version:        1.1.1.1
 license:        MIT
 license-file:   LICENSE
 author:         The Inchworm Development Team
@@ -9,11 +9,11 @@ cabal-Version:  >=1.6
 stability:      experimental
 homepage:       https://github.com/discus-lang/inchworm
 category:       Parsing
-synopsis:       Inchworm Lexer Framework
+synopsis:       Simple parser combinators specialized to lexical analysis.
 
 description:    Parser combinator framework specialized to lexical analysis.
-                Tokens can be specified via simple fold functions,
-                and we include baked in source location handling.
+                Tokens arespecified via simple fold functions, and we include
+                baked in source location handling.
 
                 If you want to parse expressions instead of tokens then try
                 try the @parsec@ or @attoparsec@ packages, which have more
@@ -24,11 +24,9 @@ description:    Parser combinator framework specialized to lexical analysis.
 
                 No dependencies other than the Haskell 'base' library.
 
-
 source-repository head
  type:     git
  location: https://github.com/discus-lang/inchworm.git
-
 
 library
   build-Depends:

@@ -17,7 +17,7 @@ import Prelude hiding (length)
 satisfies
         :: Monad m 
         => (Elem input -> Bool)
-        -> Scanner m loc input (loc, Elem input)
+        -> Scanner m loc input (Range loc, Elem input)
 
 satisfies fPred
  =  Scanner $ \ss 
@@ -46,7 +46,7 @@ skip fPred (Scanner scan1)
 --   and return a result of type @a@.
 accept  :: (Monad m, Eq (Elem input))
         => Elem input -> a
-        -> Scanner m loc input (loc, a)
+        -> Scanner m loc input (Range loc, a)
 accept i a
  = from (\i'   -> if i == i'
                         then Just a
@@ -58,7 +58,7 @@ accept i a
 --   given sequence, and return a result of type @a@.
 accepts  :: (Monad m, Sequence input, Eq input)
          => input -> a
-         -> Scanner m loc input (loc, a)
+         -> Scanner m loc input (Range loc, a)
 accepts is a
  = froms (Just (length is))
          (\is' -> if is == is'
@@ -72,18 +72,18 @@ accepts is a
 --   returning the result it produces.
 from    :: Monad m
         => (Elem input -> Maybe a)
-        -> Scanner m loc input (loc, a)
+        -> Scanner m loc input (Range loc, a)
 
 from fAccept 
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mx       <- sourcePull ss (const True)
+ $  do  mx <- sourcePull ss (const True)
         case mx of
          Nothing -> return Nothing
-         Just (l, x)  
+         Just (range, x)  
           -> case fAccept x of
                 Nothing -> return Nothing
-                Just y  -> return $ Just (l, y)
+                Just y  -> return $ Just (range, y)
 {-# INLINE from #-}
 
 
@@ -92,18 +92,18 @@ from fAccept
 --   returning the result it produces.
 froms   :: Monad m
         => Maybe Int -> (input -> Maybe a)
-        -> Scanner m loc input (loc, a)
+        -> Scanner m loc input (Range loc, a)
 
 froms mLen fAccept
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mx      <- sourcePulls ss mLen (\_ _ _ -> Just ()) ()
+ $  do  mx <- sourcePulls ss mLen (\_ _ _ -> Just ()) ()
         case mx of
-         Nothing      -> return Nothing
-         Just (l, xs) 
+         Nothing        -> return Nothing
+         Just (range, xs) 
           -> case fAccept xs of
                 Nothing -> return Nothing
-                Just y  -> return $ Just (l, y)
+                Just y  -> return $ Just (range, y)
 {-# INLINE froms #-}
 
 
@@ -115,10 +115,10 @@ alt     :: Monad m
         -> Scanner m loc input a
 alt (Scanner scan1) (Scanner scan2)
  =  Scanner $ \ss
- -> do  mx              <- sourceTry ss (scan1 ss)
+ -> do  mx       <- sourceTry ss (scan1 ss)
         case mx of
-         Nothing        -> scan2 ss
-         Just r         -> return (Just r)
+         Nothing -> scan2 ss
+         Just r  -> return (Just r)
 {-# INLINE alt #-}
 
 
@@ -132,10 +132,10 @@ alts []
 
 alts (Scanner scan1 : xs)
  = Scanner $ \ss
- -> do  mx              <- sourceTry ss (scan1 ss)
+ -> do  mx        <- sourceTry ss (scan1 ss)
         case mx of
-         Nothing        -> runScanner (alts xs) ss
-         Just r         -> return (Just r)
+         Nothing  -> runScanner (alts xs) ss
+         Just r   -> return (Just r)
 {-# INLINE alts #-}
 
 -------------------------------------------------------------------------------
@@ -150,7 +150,7 @@ alts (Scanner scan1 : xs)
 --   For example, to scan natural numbers use:
 --
 -- @
--- scanNat :: Monad m => Scanner m loc [Char] (loc, Integer)
+-- scanNat :: Monad m => Scanner m loc [Char] (Range loc, Integer)
 -- scanNat = munchPred Nothing match accept
 --         where match _ c = isDigit c
 --               accept cs = Just (read cs)
@@ -159,7 +159,7 @@ alts (Scanner scan1 : xs)
 --   To match Haskell style constructor names use:
 --
 -- @
--- scanCon :: Monad m => Scanner m loc [Char] (loc, String)
+-- scanCon :: Monad m => Scanner m loc [Char] (Range loc, String)
 -- scanCon = munchPred Nothing match accept
 --         where  match 0 c = isUpper    c
 --                match _ c = isAlphaNum c
@@ -184,7 +184,7 @@ munchPred
                 -- ^ Take the prefix of input tokens and decide
                 --   whether to produce a result value.
 
-        -> Scanner m loc input (loc, a)
+        -> Scanner m loc input (Range loc, a)
                 -- ^ Scan a prefix of tokens of type @is@, 
                 --   and produce a result of type @a@ if it matches.
 
@@ -192,8 +192,7 @@ munchPred mLenMax fPred fAccept
  = munchFold 
         mLenMax 
         (\ix i s -> if fPred ix i then Just s else Nothing)
-        ()
-        fAccept
+        () fAccept
 {-# INLINE munchPred #-}
 
 
@@ -207,14 +206,13 @@ munchWord
                 -- ^ Predicate to decide whether to accept the next
                 --   input token, also passed the index of the token
                 --   in the prefix.
-        -> Scanner m loc input (loc, input)
+        -> Scanner m loc input (Range loc, input)
 
 munchWord fPred 
  = munchFold 
         Nothing 
         (\ix i s -> if fPred ix i then Just s else Nothing)
-        ()
-        Just
+        () Just
 {-# INLINE munchWord #-}
 
 
@@ -242,19 +240,19 @@ munchFold
         -> (input -> Maybe a)
                 -- ^ Take the prefix of input tokens and decide
                 --   whether to produce a result value.
-        -> Scanner m loc input (loc, a)
+        -> Scanner m loc input (Range loc, a)
                 -- ^ Scan a prefix of tokens of type @is@,
                 --   and produce a result of type @a@ if it matches.
 
 munchFold mLenMax work s0 acceptC
  =  Scanner $ \ss
  -> sourceTry ss
- $  do  mr              <- sourcePulls ss mLenMax work s0
+ $  do  mr <- sourcePulls ss mLenMax work s0
         case mr of
-         Nothing        -> return Nothing
-         Just (l, xs)
+         Nothing -> return Nothing
+         Just (Range locFirst locFinal, xs)
           -> case acceptC xs of
                 Nothing -> return Nothing
-                Just x  -> return $ Just (l, x)
+                Just x  -> return $ Just (Range locFirst locFinal, x)
 {-# INLINE munchFold #-}
 

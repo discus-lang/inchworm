@@ -59,14 +59,14 @@ scanner fileName
         , fmap stamp $ scanOperator
         ]
  where  
-        stamp  (l, t)
-         = Located fileName l t
+        stamp  (range, t)
+         = Located fileName range t
 
-        stamp' k (l, t)
-         = Located fileName l (k t)
+        stamp' k (range, t)
+         = Located fileName range (k t)
 
 
-scanNewLine :: Scanner IO Location [Char] (Location, Token)
+scanNewLine :: Scanner IO Location [Char] (Range Location, Token)
 scanNewLine 
  = accept '\n' KNewLine
 

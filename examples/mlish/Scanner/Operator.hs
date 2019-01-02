@@ -7,7 +7,7 @@ import Text.Lexer.Inchworm.Char
 
 
 -- | Scan an infix operator.
-scanOperator :: Scanner IO Location [Char] (Location, Token)
+scanOperator :: Scanner IO Location [Char] (Range Location, Token)
 scanOperator 
  = munchPred Nothing matchOp acceptOp
  where

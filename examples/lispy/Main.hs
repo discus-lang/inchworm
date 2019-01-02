@@ -1,6 +1,6 @@
 
 import Text.Lexer.Inchworm.Char
-import qualified Data.Char      as Char
+import qualified Data.Char as Char
 
 -- | A source token.
 data Token 
@@ -9,7 +9,7 @@ data Token
 
 -- | A thing with attached location information.
 data Located a
-        = Located FilePath Location a
+        = Located FilePath (Range Location) a
         deriving Show
 
 -- | Scanner for a lispy language.
@@ -21,16 +21,17 @@ scanner fileName
         , fmap (stamp id)   $ accept ')' KKet
         , fmap (stamp KInt) $ scanInteger 
         , fmap (stamp KVar)
-          $ munchWord (\ix c  -> if ix == 0 then Char.isLower c
-                                            else Char.isAlpha c) 
+          $ munchWord (\ix c -> if ix == 0 then Char.isLower c
+                                           else Char.isAlpha c) 
         , fmap (stamp KCon) 
-          $ munchWord (\ix  c -> if ix == 0 then Char.isUpper c
-                                            else Char.isAlpha c)
+          $ munchWord (\ix c -> if ix == 0 then Char.isUpper c
+                                           else Char.isAlpha c)
         ]
  where  -- Stamp a token with source location information.
-        stamp k (l, t) 
-          = Located fileName l (k t)
+        stamp k (range, t) 
+          = Located fileName range (k t)
 
+main :: IO ()
 main 
  = do   let fileName = "Source.lispy"
         let source   = "(some (Lispy like) 26 Program 93 (for you))"
