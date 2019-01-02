@@ -203,7 +203,7 @@ makeListSourceIO loc00 bumpLoc cs0
 -- | A range of locations in a source file.
 data Range loc
         = Range !loc !loc
-        deriving Show
+        deriving (Show, Eq, Ord)
 
 
 -- | A location in a source file.
@@ -215,7 +215,7 @@ data Location
         = Location   
                 !Int    -- Line.
                 !Int    -- Column.
-        deriving Show
+        deriving (Show, Eq, Ord)
 
 
 {-# SPECIALIZE INLINE

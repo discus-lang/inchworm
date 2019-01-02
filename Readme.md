@@ -67,6 +67,6 @@ main :: IO ()
 main 
  = do   let fileName = "Source.lispy"
         let source   = "(some (Lispy like) 26 Program 93 (for you))"
-        toks    <- scanStringIO source (scanner fileName)
+        let toks     = scanString source (scanner fileName)
         print toks
 ```

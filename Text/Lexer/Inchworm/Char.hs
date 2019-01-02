@@ -4,6 +4,7 @@ module Text.Lexer.Inchworm.Char
         ( module Text.Lexer.Inchworm
 
           -- * Driver
+        , scanString
         , scanStringIO
 
           -- * Locations
@@ -19,13 +20,29 @@ module Text.Lexer.Inchworm.Char
 where
 import Text.Lexer.Inchworm
 import Text.Lexer.Inchworm.Source
+import System.IO.Unsafe
 import qualified Data.Char              as Char
 import qualified Data.List              as List
 import qualified Numeric                as Numeric
 
 
 -- Driver ---------------------------------------------------------------------
--- | Scan a string, using the IO monad to maintain internal state.
+-- | Scan a string.
+scanString
+        :: String
+        -> Scanner IO Location String a
+        -> ([a], Location, String)
+
+scanString str scanner
+ = unsafePerformIO 
+ $ scanListIO
+        (Location 0 0)
+        bumpLocationWithChar 
+        str scanner
+
+
+-- | Implementation for `scanString`,
+--   that uses the IO monad to maintain internal state.
 scanStringIO
         :: String
         -> Scanner IO Location String a

@@ -73,6 +73,7 @@ module Text.Lexer.Inchworm
         , Scanner
 
           -- * Generic Scanning
+        , scanList
         , scanListIO
 
           -- ** Source Construction
@@ -101,6 +102,7 @@ where
 import Text.Lexer.Inchworm.Source
 import Text.Lexer.Inchworm.Scanner
 import Text.Lexer.Inchworm.Combinator
+import System.IO.Unsafe
 
 
 -- | Scan a list of generic input tokens in the IO monad,
@@ -108,8 +110,22 @@ import Text.Lexer.Inchworm.Combinator
 --   along with the remaining input.
 --
 --   NOTE: If you just want to scan a `String` of characters
---   use @scanStringIO@ from "Text.Lexer.Inchworm.Char"
+--   use @scanString@ from "Text.Lexer.Inchworm.Char"
 --
+scanList 
+        :: Eq i
+        => loc                   -- ^ Starting source location.
+        -> (i -> loc -> loc)     -- ^ Function to bump the current location by one input token.
+        -> [i]                   -- ^ List of input tokens.
+        -> Scanner IO loc [i] a  -- ^ Scanner to apply.
+        -> ([a], loc, [i])
+         
+scanList loc bump input scanner
+ = unsafePerformIO $ scanListIO loc bump input scanner
+
+
+ -- | Implementation for `scanList`,
+--   that uses the IO monad to manage its state.
 scanListIO 
         :: Eq i
         => loc                   -- ^ Starting source location.
@@ -121,3 +137,5 @@ scanListIO
 scanListIO loc bump input scanner
  = do   src     <- makeListSourceIO loc bump input
         scanSourceToList src scanner
+
+

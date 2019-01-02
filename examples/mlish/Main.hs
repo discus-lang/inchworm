@@ -20,7 +20,7 @@ main
                 , "'\\137'"
                 , "\"derpo\\ntro\\BELnic\""]
 
-        result  <- scanStringIO source (scanner fileName)
+        let result = scanString source (scanner fileName)
         print result
 
 

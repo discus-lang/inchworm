@@ -1,4 +1,4 @@
-## inchworm-1.1.1.1:
+## inchworm-1.1.1:
 
  * Matching combinators now produce the range of source locations that matched,
    instead of just the starting location.
