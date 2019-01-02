@@ -5,14 +5,14 @@ lexical analysis.
 Tokens are specified via simple fold functions, and we include
 baked in source location handling.
 
-If you want to parse expressions instead of performing lexical
-analysis then try the `parsec` or `attoparsec` packages, which
-have more general purpose combinators.
-
 Matchers for standard tokens like comments and strings 
 are in the `Text.Lexer.Inchworm.Char` module.
 
 No dependencies other than the Haskell `base` library.
+
+If you want to parse expressions instead of performing lexical
+analysis then try the `parsec` or `attoparsec` packages, which
+have more general purpose combinators.
 
 ## Minimal example
 
