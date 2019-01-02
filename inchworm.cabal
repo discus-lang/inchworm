@@ -9,20 +9,27 @@ cabal-Version:  >=1.6
 stability:      experimental
 homepage:       https://github.com/discus-lang/inchworm
 category:       Parsing
-synopsis:       Simple parser combinators specialized to lexical analysis.
+synopsis:       Simple parser combinators for lexical analysis.
 
 description:    Parser combinator framework specialized to lexical analysis.
-                Tokens arespecified via simple fold functions, and we include
+                Tokens are specified via simple fold functions, and we include
                 baked in source location handling.
-
-                If you want to parse expressions instead of tokens then try
-                try the @parsec@ or @attoparsec@ packages, which have more
-                general purpose combinators.
 
                 Comes with matchers for standard lexemes like integers,
                 comments, and Haskell style strings with escape handling.
 
                 No dependencies other than the Haskell 'base' library.
+
+                If you want to parse expressions instead of tokens then try
+                try the @parsec@ or @attoparsec@ packages, which have more
+                general purpose combinators.
+
+extra-source-files:
+ Readme.md
+ Changelog.md
+ examples/lispy/*.hs
+ examples/mlish/*.hs
+ examples/mlish/Scanner/*.hs
 
 source-repository head
  type:     git

@@ -3,28 +3,15 @@
 --   Tokens can be specified via simple fold functions, 
 --   and we include baked in source location handling.
 --
---   If you want to parse expressions instead of performing lexical
---   analysis then try the @parsec@ or @attoparsec@ packages, which
---   have more general purpose combinators.
---
 --   Matchers for standard tokens like comments and strings 
 --   are in the "Text.Lexer.Inchworm.Char" module.
 --
 --   No dependencies other than the Haskell 'base' library.
+--
+--   If you want to parse expressions instead of performing lexical
+--   analysis then try the @parsec@ or @attoparsec@ packages, which
+--   have more general purpose combinators.
 -- 
--- __ Release Notes __
---
--- @
---  For 1.1.1.1:
---   * Matching combinators now produce the first and final locations
---     that matched.
---   * Line and column offsets are now 0-based instead of 1-based,
---     for easier inteface with client editors that expect this (eg VSCode).
---   Thanks to Amos Robinson:
---   * Haskell string parser now correctly handles strings gaps and the
---     string escape character \\&
--- @
---
 -- __ Minimal example __
 --
 -- The following code demonstrates how to perform lexical analysis

@@ -25,7 +25,7 @@ import qualified Numeric                as Numeric
 
 
 -- Driver ---------------------------------------------------------------------
--- | Scan a string in the IO monad.
+-- | Scan a string, using the IO monad to maintain internal state.
 scanStringIO
         :: String
         -> Scanner IO Location String a
@@ -41,7 +41,6 @@ scanStringIO str scanner
 -- Locations ------------------------------------------------------------------
 -- | Bump a location using the given character,
 --   updating the line and column number as appropriate. 
---  
 bumpLocationWithChar :: Char -> Location -> Location
 bumpLocationWithChar c (Location line col)
  = case c of 
