@@ -29,52 +29,52 @@ import qualified Numeric                as Numeric
 -- Driver ---------------------------------------------------------------------
 -- | Scan a string.
 scanString
-        :: String
-        -> Scanner IO Location String a
-        -> ([a], Location, String)
+ :: String
+ -> Scanner IO Location String a
+ -> ([a], Location, String)
 
 scanString str scanner
- = unsafePerformIO 
+ = unsafePerformIO
  $ scanListIO
         (Location 0 0)
-        bumpLocationWithChar 
+        bumpLocationWithChar
         str scanner
 
 
 -- | Implementation for `scanString`,
 --   that uses the IO monad to maintain internal state.
 scanStringIO
-        :: String
-        -> Scanner IO Location String a
-        -> IO ([a], Location, String)
+ :: String
+ -> Scanner IO Location String a
+ -> IO ([a], Location, String)
 
 scanStringIO str scanner
  = scanListIO
         (Location 0 0)
-        bumpLocationWithChar 
+        bumpLocationWithChar
         str scanner
 
 
 -- Locations ------------------------------------------------------------------
 -- | Bump a location using the given character,
---   updating the line and column number as appropriate. 
+--   updating the line and column number as appropriate.
 bumpLocationWithChar :: Char -> Location -> Location
 bumpLocationWithChar c (Location line col)
- = case c of 
+ = case c of
         '\n'    -> Location (line + 1) 0
-        _       -> Location line (col + 1) 
+        _       -> Location line (col + 1)
 
 
 -- Integers -------------------------------------------------------------------
 -- | Scan a decimal integer, with optional @-@ and @+@ sign specifiers.
-scanInteger 
-        :: Monad m 
-        => Scanner m loc [Char] (Range loc, Integer)
+scanInteger
+ :: Monad m
+ => Scanner m loc [Char] (Range loc, Integer)
 
-scanInteger 
+scanInteger
  = munchPred Nothing matchInt acceptInt
  where
-        matchInt  0 !c  
+        matchInt  0 !c
          = c == '-' || c == '+' || Char.isDigit c
 
         matchInt  _ !c  = Char.isDigit c
@@ -94,14 +94,14 @@ scanInteger
 
 -- Strings --------------------------------------------------------------------
 -- | Scan a literal string,    enclosed in double quotes.
--- 
+--
 --   We handle the escape codes listed in Section 2.6 of the Haskell Report.
 --
-scanHaskellString 
-        :: Monad   m
-        => Scanner m loc [Char] (Range loc, String)
+scanHaskellString
+ :: Monad   m
+ => Scanner m loc [Char] (Range loc, String)
 
-scanHaskellString 
+scanHaskellString
  = munchFold Nothing matchC (False, False) acceptC
  where
         -- Expect double quotes as first char.
@@ -119,7 +119,7 @@ scanHaskellString
          | c == '\\'                    = Just (False, True)
          | otherwise                    = Just (False, False)
 
-        acceptC ('"' : cs)              
+        acceptC ('"' : cs)
          = case decodeString cs of
                 (str, ('"' : []))       -> Just str
                 _                       -> Nothing
@@ -128,20 +128,20 @@ scanHaskellString
 
 {-# SPECIALIZE INLINE
      scanHaskellString
-        :: Scanner IO Location [Char] (Range Location, String)  
+        :: Scanner IO Location [Char] (Range Location, String)
   #-}
 
 
 -- Characters -----------------------------------------------------------------
 -- | Scan a literal character, enclosed in single quotes.
---   
+--
 --   We handle the escape codes listed in Section 2.6 of the Haskell Report.
 --
-scanHaskellChar 
-        :: Monad   m
-        => Scanner m loc [Char] (Range loc, Char)
+scanHaskellChar
+ :: Monad   m
+ => Scanner m loc [Char] (Range loc, Char)
 
-scanHaskellChar 
+scanHaskellChar
  = munchFold Nothing matchC (False, False) acceptC
  where
         matchC 0 '\'' _                 = Just (False, False)
@@ -155,7 +155,7 @@ scanHaskellChar
          | c == '\\'                    = Just (False, True)
          | otherwise                    = Just (False, False)
 
-        acceptC ('\'' : cs)          
+        acceptC ('\'' : cs)
          = case readChar cs of
                 -- Character literals do not support gaps or
                 -- escape terminators
@@ -172,9 +172,9 @@ scanHaskellChar
 
 -- Comments -------------------------------------------------------------------
 -- | Scan a Haskell block comment.
-scanHaskellCommentBlock 
-        :: Monad   m
-        => Scanner m loc [Char] (Range loc, String)
+scanHaskellCommentBlock
+ :: Monad   m
+ => Scanner m loc [Char] (Range loc, String)
 
 scanHaskellCommentBlock
  = munchFold Nothing matchC (' ', True) acceptC
@@ -193,23 +193,23 @@ scanHaskellCommentBlock
         acceptC _                       = Nothing
 
 {-# SPECIALIZE INLINE
-     scanHaskellCommentBlock 
+     scanHaskellCommentBlock
         :: Scanner IO Location [Char] (Range Location, String)
   #-}
 
 
 -- | Scan a Haskell line comment.
-scanHaskellCommentLine 
+scanHaskellCommentLine
         :: Monad   m
         => Scanner m loc [Char] (Range loc, String)
 
-scanHaskellCommentLine 
+scanHaskellCommentLine
  = munchPred Nothing matchC acceptC
  where
         matchC 0 '-'                    = True
         matchC 1 '-'                    = True
         matchC _ '\n'                   = False
-        matchC ix _       
+        matchC ix _
          | ix < 2                       = False
          | otherwise                    = True
 
@@ -290,7 +290,7 @@ readChar ('\\' : cs)
  = Just (Nothing, rest)
 
 -- Control characters defined by ASCII escape codes.
-readChar ('\\' : cs)                    
+readChar ('\\' : cs)
  = let  go [] = Nothing
         go ((str, c) : moar)
          = case List.stripPrefix str cs of
@@ -306,7 +306,7 @@ readChar (c : rest)     = Just (Just c, rest)
 readChar _              = Nothing
 
 escapedChars :: [(String, Char)]
-escapedChars 
+escapedChars
  =      [ ("a",   '\a'),   ("b", '\b'),     ("f",   '\f'),   ("n", '\n')
         , ("r",   '\r'),   ("t", '\t'),     ("v",   '\v'),   ("\\",  '\\')
         , ("\"",  '\"'),   ("\'",  '\'')
@@ -319,4 +319,3 @@ escapedChars
         , ("CAN", '\CAN'), ("EM",  '\EM'),  ("SUB", '\SUB'), ("ESC", '\ESC')
         , ("FS",  '\FS'),  ("GS",  '\GS'),  ("RS",  '\RS'),  ("US",  '\US')
         , ("SP",  '\SP'),  ("DEL", '\DEL')]
-

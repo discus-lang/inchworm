@@ -14,8 +14,9 @@ scanNamed = alt scanKeyVar scanCon
 
 
 -- Variables and Keywords -----------------------------------------------------
+keywords :: [String]
 keywords
- =      [ "import",     "export" 
+ =      [ "import",     "export"
         , "box",        "run"
         , "let",        "in"
         , "case",       "of"
@@ -54,7 +55,7 @@ isVarBody c
 scanCon   :: Scanner IO Location [Char] (Range Location, Token)
 scanCon
  = munchPred Nothing matchCon acceptCon
- where  
+ where
         matchCon 0 c    = isConStart c
         matchCon _ c    = isConBody  c
 
@@ -71,6 +72,6 @@ isConStart c
 isConBody  :: Char -> Bool
 isConBody c
  =  Char.isAlpha c
- || Char.isDigit c 
+ || Char.isDigit c
  || c == '_' || c == '\'' || c == '#'
 

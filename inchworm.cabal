@@ -37,7 +37,7 @@ source-repository head
 
 library
   build-Depends:
-        base            >= 4.8   && < 4.13
+        base
 
   exposed-modules:
         Text.Lexer.Inchworm.Char

@@ -15,12 +15,12 @@ import Prelude hiding (length)
 -- | Accept the next token if it matches the given predicate,
 --   returning that token as the result.
 satisfies
-        :: Monad m 
-        => (Elem input -> Bool)
+ :: Monad m
+ => (Elem input -> Bool)
         -> Scanner m loc input (Range loc, Elem input)
 
 satisfies fPred
- =  Scanner $ \ss 
+ =  Scanner $ \ss
  -> sourcePull ss fPred
 {-# INLINE satisfies #-}
 
@@ -54,7 +54,7 @@ accept i a
 {-# INLINE accept #-}
 
 
--- | Accept a fixed length sequence of tokens that match the 
+-- | Accept a fixed length sequence of tokens that match the
 --   given sequence, and return a result of type @a@.
 accepts  :: (Monad m, Sequence input, Eq input)
          => input -> a
@@ -74,20 +74,20 @@ from    :: Monad m
         => (Elem input -> Maybe a)
         -> Scanner m loc input (Range loc, a)
 
-from fAccept 
+from fAccept
  =  Scanner $ \ss
  -> sourceTry ss
  $  do  mx <- sourcePull ss (const True)
         case mx of
          Nothing -> return Nothing
-         Just (range, x)  
+         Just (range, x)
           -> case fAccept x of
                 Nothing -> return Nothing
                 Just y  -> return $ Just (range, y)
 {-# INLINE from #-}
 
 
--- | Use the given function to check whether to accept 
+-- | Use the given function to check whether to accept
 --   a fixed length sequence of tokens,
 --   returning the result it produces.
 froms   :: Monad m
@@ -100,7 +100,7 @@ froms mLen fAccept
  $  do  mx <- sourcePulls ss mLen (\_ _ _ -> Just ()) ()
         case mx of
          Nothing        -> return Nothing
-         Just (range, xs) 
+         Just (range, xs)
           -> case fAccept xs of
                 Nothing -> return Nothing
                 Just y  -> return $ Just (range, y)
@@ -110,7 +110,7 @@ froms mLen fAccept
 -------------------------------------------------------------------------------
 -- | Combine two argument scanners into a result scanner,
 --   where the first argument scanner is tried before the second.
-alt     :: Monad m 
+alt     :: Monad m
         => Scanner m loc input a -> Scanner m loc input a
         -> Scanner m loc input a
 alt (Scanner scan1) (Scanner scan2)
@@ -127,7 +127,7 @@ alt (Scanner scan1) (Scanner scan2)
 --   one that matches (or not).
 alts    :: Monad m
         => [Scanner m loc input a] -> Scanner m loc input a
-alts [] 
+alts []
  = Scanner $ \_ -> return Nothing
 
 alts (Scanner scan1 : xs)
@@ -170,79 +170,79 @@ alts (Scanner scan1 : xs)
 -- then you can do it in the @accept@ function and produce a different
 -- result constructor for each one.
 --
-munchPred 
-        :: Monad m
-        => Maybe Int
-                -- ^ Maximum number of tokens to consider,
-                --   or `Nothing` for no maximum.
-        -> (Int -> Elem input -> Bool)
-                -- ^ Predicate to decide whether to consider the next
-                --   input token, also passed the index of the token
-                --   in the prefix.
+munchPred
+ :: Monad m
+ => Maybe Int
+        -- ^ Maximum number of tokens to consider,
+        --   or `Nothing` for no maximum.
+ -> (Int -> Elem input -> Bool)
+        -- ^ Predicate to decide whether to consider the next
+        --   input token, also passed the index of the token
+        --   in the prefix.
 
-        -> (input -> Maybe a)
-                -- ^ Take the prefix of input tokens and decide
-                --   whether to produce a result value.
+ -> (input -> Maybe a)
+        -- ^ Take the prefix of input tokens and decide
+        --   whether to produce a result value.
 
-        -> Scanner m loc input (Range loc, a)
-                -- ^ Scan a prefix of tokens of type @is@, 
-                --   and produce a result of type @a@ if it matches.
+ -> Scanner m loc input (Range loc, a)
+        -- ^ Scan a prefix of tokens of type @is@,
+        --   and produce a result of type @a@ if it matches.
 
 munchPred mLenMax fPred fAccept
- = munchFold 
-        mLenMax 
+ = munchFold
+        mLenMax
         (\ix i s -> if fPred ix i then Just s else Nothing)
         () fAccept
 {-# INLINE munchPred #-}
 
 
 -------------------------------------------------------------------------------
--- | Like `munchPred`, but we accept prefixes of any length, 
+-- | Like `munchPred`, but we accept prefixes of any length,
 --   and always accept the input tokens that match.
 --
-munchWord 
-        :: Monad m
-        => (Int -> Elem input -> Bool)
-                -- ^ Predicate to decide whether to accept the next
-                --   input token, also passed the index of the token
-                --   in the prefix.
-        -> Scanner m loc input (Range loc, input)
+munchWord
+ :: Monad m
+ => (Int -> Elem input -> Bool)
+        -- ^ Predicate to decide whether to accept the next
+        --   input token, also passed the index of the token
+        --   in the prefix.
+ -> Scanner m loc input (Range loc, input)
 
-munchWord fPred 
- = munchFold 
-        Nothing 
+munchWord fPred
+ = munchFold
+        Nothing
         (\ix i s -> if fPred ix i then Just s else Nothing)
         () Just
 {-# INLINE munchWord #-}
 
 
 -------------------------------------------------------------------------------
--- | Like `munchPred`, but we can use a fold function to select the 
---   prefix of tokens to consider. This is useful when lexing comments, 
---   and string literals where consecutive tokens can have special meaning 
+-- | Like `munchPred`, but we can use a fold function to select the
+--   prefix of tokens to consider. This is useful when lexing comments,
+--   and string literals where consecutive tokens can have special meaning
 --   (ie escaped quote characters).
 --
 --   See the source of @scanHaskellChar@ in the "Text.Lexer.Inchworm.Char",
 --   module for an example of its usage.
 --
-munchFold   
-        :: Monad m
-        => Maybe Int
-                -- ^ Maximum number of tokens to consider,
-                --   or `Nothing` for no maximum.
-        -> (Int -> Elem input -> state -> Maybe state) 
-                -- ^ Fold function to decide whether to consider the next
-                --   input token. The next token will be considered if
-                --   the function produces a `Just` with its new state.
-                --   We stop considering tokens the first time it returns
-                --   `Nothing`.
-        -> state  -- ^ Initial state for the fold.
-        -> (input -> Maybe a)
-                -- ^ Take the prefix of input tokens and decide
-                --   whether to produce a result value.
-        -> Scanner m loc input (Range loc, a)
-                -- ^ Scan a prefix of tokens of type @is@,
-                --   and produce a result of type @a@ if it matches.
+munchFold
+ :: Monad m
+ => Maybe Int
+         -- ^ Maximum number of tokens to consider,
+         --   or `Nothing` for no maximum.
+ -> (Int -> Elem input -> state -> Maybe state)
+         -- ^ Fold function to decide whether to consider the next
+         --   input token. The next token will be considered if
+         --   the function produces a `Just` with its new state.
+         --   We stop considering tokens the first time it returns
+         --   `Nothing`.
+ -> state  -- ^ Initial state for the fold.
+ -> (input -> Maybe a)
+         -- ^ Take the prefix of input tokens and decide
+         --   whether to produce a result value.
+ -> Scanner m loc input (Range loc, a)
+         -- ^ Scan a prefix of tokens of type @is@,
+         --   and produce a result of type @a@ if it matches.
 
 munchFold mLenMax work s0 acceptC
  =  Scanner $ \ss

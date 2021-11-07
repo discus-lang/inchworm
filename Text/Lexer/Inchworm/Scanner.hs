@@ -17,7 +17,7 @@ data Scanner m loc input a
 instance Monad m
       => Functor (Scanner m loc input) where
  fmap f (Scanner load)
-  =  Scanner $ \source 
+  =  Scanner $ \source
   -> do r       <- load source
         case r of
          Nothing        -> return Nothing
@@ -27,7 +27,7 @@ instance Monad m
 
 instance Monad m
       => Applicative (Scanner m loc input) where
- pure x 
+ pure x
   = Scanner $ \_ -> return (Just x)
 
  (<*>) (Scanner loadF) (Scanner loadX)
@@ -45,8 +45,6 @@ instance Monad m
 
 instance Monad m
       => Monad (Scanner m loc input) where
- return x
-  = Scanner $ \_ -> return (Just x)
 
  (>>=) (Scanner loadX) f
   =  Scanner $ \ss
@@ -63,7 +61,7 @@ instance Monad m
 --
 scanSourceToList
         :: Monad  m
-        => Source m loc [i] -> Scanner m loc [i] a 
+        => Source m loc [i] -> Scanner m loc [i] a
         -> m ([a], loc, [i])
 
 scanSourceToList ss (Scanner load)
@@ -72,7 +70,7 @@ scanSourceToList ss (Scanner load)
          =  load ss >>= \result
          -> case result of
                 Just x  -> go (x : acc)
-                Nothing 
+                Nothing
                  -> do  (loc, src') <- sourceRemaining ss
                         return (reverse acc, loc, src')
 

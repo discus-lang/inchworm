@@ -6,22 +6,24 @@ import Token
 import Text.Lexer.Inchworm.Char
 
 
-puncs1 
+puncs1 :: [Char]
+puncs1
  =      [ '(', ')'
         , '[', ']'
         , '{', '}'
         , '.', ',', ';' ]
 
-puncs2 
+puncs2 :: [String]
+puncs2
  =      [ "[:", ":]", "{:", ":}" ]
 
 
 -- | Scan a punctuation character.
 scanPunctuation  :: Scanner IO Location [Char] (Range Location, Token)
-scanPunctuation   
+scanPunctuation
  = alt  (munchPred (Just 2) matchPunc2  acceptPunc2)
         (from               acceptPunc1)
- where  
+ where
         acceptPunc1 c
          | elem c puncs1        = Just $ KPunc [c]
          | otherwise            = Nothing
